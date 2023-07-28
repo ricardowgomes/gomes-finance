@@ -2,34 +2,37 @@
 
 import { SetStateAction, useState } from 'react';
 
+interface Transaction {
+  transactionDate: string;
+  transactionType: string;
+  name: string;
+  category: string;
+  amount: string;
+}
+
 const CSVUploadForm = () => {
-  const [bankName, setBankName] = useState('');
-  const [debitType, setDebitType] = useState('');
+  const [origin, setOrigin] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [transactions, setTransactions] = useState<[Transaction] | null>(null)
 
-  const handleBankNameChange = (e: { target: { value: SetStateAction<string>; }; }) => {
-    setBankName(e.target.value);
+  const handleOriginChange = (e: { target: { value: SetStateAction<string>; }; }) => {
+    setOrigin(e.target.value);
   };
 
-  const handleDebitTypeChange = (e: { target: { value: SetStateAction<string>; }; }) => {
-    setDebitType(e.target.value);
-  };
-
-  const handleFileChange = (e: { target: { files: SetStateAction<null>[]; }; }) => {
+  const handleFileChange = (e: any) => {
     setSelectedFile(e.target.files[0]);
   };
 
   const handleSubmit = async (e: { preventDefault: () => void; }) => {
     e.preventDefault();
 
-    if (!bankName || !debitType || !selectedFile) {
+    if (!origin || !selectedFile) {
       alert('Please fill in all fields and select a file.');
       return;
     }
 
     const formData = new FormData();
-    formData.append('bankName', bankName);
-    formData.append('debitType', debitType);
+    formData.append('origin', origin);
     formData.append('csvFile', selectedFile);
 
     try {
@@ -40,9 +43,12 @@ const CSVUploadForm = () => {
 
       if (response.ok) {
         alert('CSV file uploaded successfully!');
-        setBankName('');
-        setDebitType('');
+        setOrigin('');
         setSelectedFile(null);
+
+        response.json().then((result) => {
+          setTransactions(result)
+        })
       } else {
         alert('Error uploading CSV file.');
       }
@@ -52,15 +58,12 @@ const CSVUploadForm = () => {
   };
 
   return (
+    <main>
+
     <form onSubmit={handleSubmit}>
       <label>
-        Bank Name:
-        <input type="text" value={bankName} onChange={handleBankNameChange} />
-      </label>
-      <br />
-      <label>
-        Debit Type:
-        <input type="text" value={debitType} onChange={handleDebitTypeChange} />
+        Origem:
+        <input type="text" value={origin} onChange={handleOriginChange} />
       </label>
       <br />
       <label>
@@ -70,6 +73,31 @@ const CSVUploadForm = () => {
       <br />
       <button type="submit">Upload</button>
     </form>
+      {transactions && (
+        <table>
+          <thead>
+            <tr>
+              <th>transactionDate</th>
+                  <th>name</th>
+                  <th>transactionType</th>
+                  <th>category</th>
+                  <th>amount</th>
+            </tr>
+        </thead>
+          <tbody>
+              {transactions.map(transaction => (
+                <tr key={transaction.name}>
+                  <td>{transaction.transactionDate}</td>
+                  <td>{transaction.name}</td>
+                  <td>{transaction.transactionType}</td>
+                  <td>{transaction.category}</td>
+                  <td>{transaction.amount}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      )}
+    </main>
   );
 };
 

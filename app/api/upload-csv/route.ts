@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import csv from 'csv-parser';
 import { Readable } from 'stream';
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 interface TransactionNotFormat {
   "Transaction date": string;
@@ -11,17 +14,19 @@ interface TransactionNotFormat {
 }
 
 interface TransactionFormat {
-  "Transaction date": string;
-  Transaction: string;
-  Name: string;
-  Memo: string;
-  Amount: string;
+  date: string;
+  type: string;
+  origin: string;
+  name: string;
+  category: string;
+  amount: number;
 }
 
 export async function POST(req: NextRequest) {  
   try {
     const data = await req.formData();
-    const file: any = data.get('csvFile'); // It is an array so get the first element
+    const file: any = data.get('csvFile');
+    const origin: FormDataEntryValue | null = data.get('origin');
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
@@ -44,14 +49,21 @@ export async function POST(req: NextRequest) {
 
     const formatResponse: [TransactionFormat] = results.map(
       (transaction: TransactionNotFormat) => ({
-      transactionDate: transaction["Transaction date"],
-      transactionType: transaction.Transaction,
-      name: transaction.Name,
-      category: transaction.Memo.split('Category: ')[1],
-      amount: Number(transaction.Amount)
+        date: new Date(transaction["Transaction date"]),
+        type: transaction.Transaction,
+        name: transaction.Name,
+        category: transaction.Memo || 'Other',
+        origin: origin,
+        amount: Number(transaction.Amount)
     }))
 
-    return NextResponse.json(formatResponse);
+    const createdTransactions = await prisma.transaction.createMany({
+      data: formatResponse,
+    })
+  
+    await prisma.$disconnect()
+
+    return NextResponse.json(createdTransactions);
 
   } catch (error) {
     console.log('error', error)
